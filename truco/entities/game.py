@@ -164,7 +164,13 @@ class Game:
             p1, p2 = self._all_players
             v1 = self.hand.envido_value(p1)
             v2 = self.hand.envido_value(p2)
-            winner_team = self._player_team(p1) if v1 >= v2 else self._player_team(p2)
+            mano_team = self._player_team(self.hand.mano_player)
+            if v1 > v2:
+                winner_team = self._player_team(p1)
+            elif v2 > v1:
+                winner_team = self._player_team(p2)
+            else:
+                winner_team = mano_team  # tie goes to mano
             pts = self.hand.envido.value_accepted
             winner_team.add_points(pts)
             return BetResult(bet_pending=False, hand_over=False, winner_team=winner_team, points_winner=pts)
