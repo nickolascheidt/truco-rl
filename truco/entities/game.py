@@ -63,7 +63,7 @@ class Game:
             hand_winner=hand_winner_team if hand_over else None,
             hand_over=hand_over,
             next_player=next_player,
-            round_number=self.hand.round_number,
+            round_number=len([r for r in self.hand.rounds if r.resolved]),
         )
 
     def _check_hand_over(self):
@@ -116,6 +116,8 @@ class Game:
         return self.hand.truco.can_ask(self._player_team(player))
 
     def ask_truco(self, player) -> BetResult:
+        if self._has_pending_bet():
+            raise RuntimeError("Cannot ask truco while another bet is pending")
         team = self._player_team(player)
         self.hand.truco.ask(team)
         return BetResult(
@@ -154,6 +156,8 @@ class Game:
     def ask_envido(self, player, bet_type: BetType) -> BetResult:
         if not self.hand.can_envido(player):
             raise RuntimeError("Envido not available")
+        if self.hand.truco.status == BetStatus.PENDING or self.hand.flor.waiting_for_response:
+            raise RuntimeError("Cannot ask envido while another bet is pending")
         pts_needed = self.points_to_win - self._player_team(player).points
         self.hand.envido.ask(player, bet_type, points_to_win=pts_needed)
         return BetResult(bet_pending=True, who_responds=self._other_player(player))
@@ -207,7 +211,13 @@ class Game:
         if Hand.has_flor(p1.hand) and Hand.has_flor(p2.hand):
             v1 = self.hand.flor_value(p1)
             v2 = self.hand.flor_value(p2)
-            winner_team = self._player_team(p1) if v1 >= v2 else self._player_team(p2)
+            mano_team = self._player_team(self.hand.mano_player)
+            if v1 > v2:
+                winner_team = self._player_team(p1)
+            elif v2 > v1:
+                winner_team = self._player_team(p2)
+            else:
+                winner_team = mano_team
         elif Hand.has_flor(p1.hand):
             winner_team = self._player_team(p1)
         else:
