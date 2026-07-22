@@ -3,11 +3,12 @@ from truco.enums import Suit
 
 
 def _calc_strength(number: int, suit: Suit) -> int:
-    if number == 4 and suit == Suit.ESPADAS:
-        return 14
-    if number == 7 and suit == Suit.ESPADAS:
-        return 13
+    # Manilhas fixas (espelha CalcularForca do C#, invertendo: C# 1=mais forte, Python 14=mais forte)
     if number == 1 and suit == Suit.ESPADAS:
+        return 14
+    if number == 1 and suit == Suit.PAUS:  # Bastos
+        return 13
+    if number == 7 and suit == Suit.ESPADAS:
         return 12
     if number == 7 and suit == Suit.OUROS:
         return 11
@@ -15,7 +16,7 @@ def _calc_strength(number: int, suit: Suit) -> int:
         return 10
     if number == 2:
         return 9
-    if number == 1:
+    if number == 1:  # Copas ou Ouros
         return 8
     if number == 12:
         return 7
@@ -23,13 +24,13 @@ def _calc_strength(number: int, suit: Suit) -> int:
         return 6
     if number == 10:
         return 5
-    if number == 7:
+    if number == 7:  # Copas ou Paus (não-manilha)
         return 4
     if number == 6:
         return 3
     if number == 5:
         return 2
-    return 1  # number == 4, suit != ESPADAS
+    return 1  # number == 4
 
 
 class Card:

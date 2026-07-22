@@ -46,24 +46,20 @@ def test_card_creation():
     assert card.suit == Suit.ESPADAS
 
 
-def test_manilha_is_strongest():
-    manilha = Card(number=4, suit=Suit.ESPADAS)
-    assert manilha.strength == 14
+def test_one_espadas_is_strongest():
+    assert Card(number=1, suit=Suit.ESPADAS).strength == 14
+
+
+def test_one_paus_is_second_manilha():
+    assert Card(number=1, suit=Suit.PAUS).strength == 13
 
 
 def test_seven_espadas():
-    card = Card(number=7, suit=Suit.ESPADAS)
-    assert card.strength == 13
-
-
-def test_one_espadas():
-    card = Card(number=1, suit=Suit.ESPADAS)
-    assert card.strength == 12
+    assert Card(number=7, suit=Suit.ESPADAS).strength == 12
 
 
 def test_seven_ouros():
-    card = Card(number=7, suit=Suit.OUROS)
-    assert card.strength == 11
+    assert Card(number=7, suit=Suit.OUROS).strength == 11
 
 
 def test_three_any_suit():
@@ -76,10 +72,9 @@ def test_two_any_suit():
     assert Card(number=2, suit=Suit.ESPADAS).strength == 9
 
 
-def test_one_not_espadas():
+def test_one_copas_ouros():
     assert Card(number=1, suit=Suit.COPAS).strength == 8
     assert Card(number=1, suit=Suit.OUROS).strength == 8
-    assert Card(number=1, suit=Suit.PAUS).strength == 8
 
 
 def test_figure_cards():
@@ -97,6 +92,11 @@ def test_low_cards():
     assert Card(number=6, suit=Suit.ESPADAS).strength == 3
     assert Card(number=5, suit=Suit.ESPADAS).strength == 2
     assert Card(number=4, suit=Suit.COPAS).strength == 1
+
+
+def test_four_is_weakest():
+    assert Card(number=4, suit=Suit.ESPADAS).strength == 1
+    assert Card(number=4, suit=Suit.OUROS).strength == 1
 
 
 def test_envido_value_number_cards():
