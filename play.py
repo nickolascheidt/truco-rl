@@ -129,14 +129,15 @@ def print_header(game, human_team, agent_team, hand_num, human, agent):
     print()
 
 
-def print_envido_result(hand, human, agent):
+def print_envido_result(hand, human, agent, envido_result):
     from truco.enums import BetStatus
     env = hand.envido
-    if env.status != BetStatus.ACCEPTED:
+    if env.status != BetStatus.ACCEPTED or envido_result is None:
         return
     human_pts = hand.envido_value(human)
     agent_pts = hand.envido_value(agent)
-    winner_name = env.winner.name if env.winner else "?"
+    winner_team = getattr(envido_result, "winner_team", None)
+    winner_name = winner_team.players[0].name if winner_team else "?"
     print()
     print(f"  ENVIDO resolvido:")
     print(f"    {human.name}: {human_pts} pts   |   {agent.name}: {agent_pts} pts")
@@ -168,6 +169,7 @@ def play_game(model, game_num):
         clear()
         print_header(game, human_team, agent_team, hand_num, human, agent)
 
+        envido_result = None
         for _ in range(200):
             if game.check_game_over():
                 break
@@ -182,12 +184,16 @@ def play_game(model, game_num):
 
             result = apply_action(game, current, action)
 
+            act = TrucoAction(action)
+            if act == TrucoAction.ENVIDO_ACCEPT:
+                envido_result = result
+
             if game.check_game_over():
                 break
             if getattr(result, "hand_over", False):
                 break
 
-        print_envido_result(game.hand, human, agent)
+        print_envido_result(game.hand, human, agent, envido_result)
         print_round_results(game.hand, human, agent)
         print()
         print(f"  Placar final da mao: Voce={human_team.points}  Agente={agent_team.points}")
