@@ -158,7 +158,8 @@ class Game:
             raise RuntimeError("Envido not available")
         if self.hand.truco.status == BetStatus.PENDING or self.hand.flor.waiting_for_response:
             raise RuntimeError("Cannot ask envido while another bet is pending")
-        pts_needed = self.points_to_win - self._player_team(player).points
+        opponent_team = self._other_team(self._player_team(player))
+        pts_needed = self.points_to_win - opponent_team.points
         self.hand.envido.ask(player, bet_type, points_to_win=pts_needed)
         return BetResult(bet_pending=True, who_responds=self._other_player(player))
 
@@ -196,33 +197,73 @@ class Game:
         return BetResult(bet_pending=True, who_responds=self._other_player(player))
 
     def respond_flor(self, player, response: FlorResponse) -> BetResult:
-        if response == FlorResponse.ACCEPT:
+        if self.hand.flor.contra_flor_pending:
+            return self._respond_flor_phase2(player, response)
+        return self._respond_flor_phase1(player, response)
+
+    def _respond_flor_phase1(self, player, response: FlorResponse) -> BetResult:
+        declaring_team = self.hand.flor.who_declared
+        responding_team = self._player_team(player)
+        if response == FlorResponse.ME_ACHICO:
+            # folder (responding team) gets 2; declarant gets 4
             self.hand.flor.close()
-            declaring_team = self.hand.flor.who_declared
-            declaring_team.add_points(3)
-            return BetResult(bet_pending=False, winner_team=declaring_team, points_winner=3)
+            declaring_team.add_points(4)
+            responding_team.add_points(2)
+            return BetResult(bet_pending=False, winner_team=declaring_team, points_winner=4, points_loser=2)
         if response == FlorResponse.CONTRA_FLOR:
             team = self._player_team(player)
             self.hand.flor.contra_flor(team)
             return BetResult(bet_pending=True, who_responds=self._other_player(player))
-        # CONTRA_FLOR_AL_RESTO
-        self.hand.flor.close()
+        raise RuntimeError("Only ME_ACHICO or CONTRA_FLOR are valid in the initial flor phase")
+
+    def _respond_flor_phase2(self, player, response: FlorResponse) -> BetResult:
+        # The original declarant is responding to ContraFlor
+        declaring_team = self.hand.flor.who_declared
+        contra_team = self._other_team(declaring_team)
+        if response == FlorResponse.ME_ACHICO:
+            # declarant folds: contra team gets 4, declarant gets 2
+            self.hand.flor.close()
+            contra_team.add_points(4)
+            declaring_team.add_points(2)
+            return BetResult(bet_pending=False, winner_team=contra_team, points_winner=4, points_loser=2)
+        if response == FlorResponse.ACEITAR:
+            # compare flores; winner gets 6
+            return self._resolve_flor_confronto(6)
+        if response == FlorResponse.CONTRA_FLOR_AL_RESTO:
+            return self._resolve_flor_al_resto()
+        raise RuntimeError("Invalid response for ContraFlor phase")
+
+    def _resolve_flor_confronto(self, points: int) -> BetResult:
         p1, p2 = self._all_players
-        if Hand.has_flor(p1.hand) and Hand.has_flor(p2.hand):
-            v1 = self.hand.flor_value(p1)
-            v2 = self.hand.flor_value(p2)
-            mano_team = self._player_team(self.hand.mano_player)
-            if v1 > v2:
-                winner_team = self._player_team(p1)
-            elif v2 > v1:
-                winner_team = self._player_team(p2)
-            else:
-                winner_team = mano_team
-        elif Hand.has_flor(p1.hand):
+        v1 = self.hand.flor_value(p1) if Hand.has_flor(p1.hand) else -1
+        v2 = self.hand.flor_value(p2) if Hand.has_flor(p2.hand) else -1
+        mano_team = self._player_team(self.hand.mano_player)
+        if v1 > v2:
             winner_team = self._player_team(p1)
-        else:
+        elif v2 > v1:
             winner_team = self._player_team(p2)
-        pts = self.points_to_win - winner_team.points
+        else:
+            winner_team = mano_team
+        self.hand.flor.close()
+        winner_team.add_points(points)
+        return BetResult(bet_pending=False, winner_team=winner_team, points_winner=points)
+
+    def _resolve_flor_al_resto(self) -> BetResult:
+        p1, p2 = self._all_players
+        v1 = self.hand.flor_value(p1) if Hand.has_flor(p1.hand) else -1
+        v2 = self.hand.flor_value(p2) if Hand.has_flor(p2.hand) else -1
+        mano_team = self._player_team(self.hand.mano_player)
+        if v1 > v2:
+            winner_team = self._player_team(p1)
+            loser_team = self._player_team(p2)
+        elif v2 > v1:
+            winner_team = self._player_team(p2)
+            loser_team = self._player_team(p1)
+        else:
+            winner_team = mano_team
+            loser_team = self._other_team(mano_team)
+        pts = self.points_to_win - loser_team.points
+        self.hand.flor.close()
         winner_team.add_points(pts)
         return BetResult(bet_pending=False, winner_team=winner_team, points_winner=pts)
 

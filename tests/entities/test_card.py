@@ -32,8 +32,9 @@ def test_bet_response_values():
 
 
 def test_flor_response_values():
-    assert FlorResponse.ACCEPT.value == "accept"
+    assert FlorResponse.ME_ACHICO.value == "me_achico"
     assert FlorResponse.CONTRA_FLOR.value == "contra_flor"
+    assert FlorResponse.ACEITAR.value == "aceitar"
     assert FlorResponse.CONTRA_FLOR_AL_RESTO.value == "contra_flor_al_resto"
 
 

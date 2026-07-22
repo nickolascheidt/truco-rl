@@ -40,11 +40,12 @@ def test_declare_flor_cancels_envido():
     assert game.can_envido(bob) is False
 
 
-def test_respond_flor_accept_awards_points():
+def test_respond_flor_me_achico_awards_points():
     game, alice, bob, t1, t2 = _make_game_with_flor()
     game.declare_flor(alice)
-    result = game.respond_flor(bob, FlorResponse.ACCEPT)
-    assert t1.points == 3  # declaring team wins 3 points on accept
+    result = game.respond_flor(bob, FlorResponse.ME_ACHICO)
+    assert t1.points == 4  # declarant gets 4 on opponent's me_achico
+    assert t2.points == 2  # folder gets 2
 
 
 def test_declare_flor_sets_waiting():

@@ -5,6 +5,7 @@ from truco.entities.round import Round
 from truco.states.truco_state import TrucoState
 from truco.states.envido_state import EnvidoState
 from truco.states.flor_state import FlorState
+from truco.enums import BetStatus
 
 if TYPE_CHECKING:
     from truco.entities.player import Player
@@ -86,6 +87,8 @@ class Hand:
         if Hand.has_flor(player.hand):
             return False
         if self.flor.envido_cancelled:
+            return False
+        if self.envido.status in (BetStatus.REFUSED, BetStatus.ACCEPTED):
             return False
         return len(self.rounds) == 1 and not self.rounds[0].resolved
 
