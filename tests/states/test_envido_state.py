@@ -72,6 +72,16 @@ def test_raise_envido_to_real_envido():
     assert state.value_if_refused == 2
 
 
+def test_real_envido_stacked_on_real_envido():
+    state = EnvidoState()
+    alice, bob = _make_players()
+    state.ask(alice, BetType.ENVIDO)
+    state.ask(bob, BetType.REAL_ENVIDO)
+    state.ask(alice, BetType.REAL_ENVIDO)
+    assert state.value_accepted == 8  # 2 + 3 + 3
+    assert state.value_if_refused == 5
+
+
 def test_falta_envido_value():
     state = EnvidoState()
     alice, _ = _make_players()
@@ -85,5 +95,5 @@ def test_falta_envido_after_envido():
     alice, bob = _make_players()
     state.ask(alice, BetType.ENVIDO)
     state.ask(bob, BetType.FALTA_ENVIDO, points_to_win=12)
-    assert state.value_accepted == 14  # 2 (envido) + 12 (falta)
-    assert state.value_if_refused == 2
+    assert state.value_accepted == 12  # falta is total, not cumulative
+    assert state.value_if_refused == 2  # previous envido value = what you lose by folding

@@ -7,7 +7,7 @@ from truco.enums import BetType, BetResponse, FlorResponse, BetStatus
 
 
 class Game:
-    def __init__(self, team1, team2, points_to_win: int = 30) -> None:
+    def __init__(self, team1, team2, points_to_win: int = 24) -> None:
         self.team1 = team1
         self.team2 = team2
         self.points_to_win = points_to_win
@@ -40,6 +40,8 @@ class Game:
         self.hand = Hand(mano_player=p1, players=[p1, p2])
 
     def play_card(self, player, card) -> PlayResult:
+        if self.check_game_over():
+            raise RuntimeError("Game is already over")
         if player != self.hand.current_player:
             raise RuntimeError(f"It's not {player.name}'s turn")
         if self._has_pending_bet():
@@ -79,21 +81,25 @@ class Game:
         r1 = p_to_team(resolved[0].winner)
         r2 = p_to_team(resolved[1].winner)
 
+        mano_team = p_to_team(self.hand.mano_player)
+
         if r1 is not None and r1 == r2:
-            return True, r1
+            return True, r1                    # won 2 in a row
         if r1 is None and r2 is not None:
-            return True, r2
+            return True, r2                    # tie r1 → win r2
         if r1 is not None and r2 is None:
-            return True, r1
+            return True, r1                    # win r1 → tie r2
         if r1 is None and r2 is None:
-            mano_team = p_to_team(self.hand.mano_player)
-            return True, mano_team
-        # split: need round 3
+            # tie r1 + tie r2 → r3 decides; all-3-tie → mano
+            if len(resolved) >= 3:
+                r3 = p_to_team(resolved[2].winner)
+                return True, r3 if r3 is not None else mano_team
+            return False, None                 # need r3
+        # split (r1 != r2): r3 decides; r3 tie → r1 winner wins
         if len(resolved) >= 3:
             r3 = p_to_team(resolved[2].winner)
-            mano_team = p_to_team(self.hand.mano_player)
-            return True, r3 if r3 is not None else mano_team
-        return False, None
+            return True, r3 if r3 is not None else r1
+        return False, None                     # need r3
 
     def _has_pending_bet(self) -> bool:
         return (
@@ -158,6 +164,7 @@ class Game:
             raise RuntimeError("Envido not available")
         if self.hand.truco.status == BetStatus.PENDING or self.hand.flor.waiting_for_response:
             raise RuntimeError("Cannot ask envido while another bet is pending")
+        # Falta = what the OTHER team needs to win ("falta para o outro time vencer")
         opponent_team = self._other_team(self._player_team(player))
         pts_needed = self.points_to_win - opponent_team.points
         self.hand.envido.ask(player, bet_type, points_to_win=pts_needed)
@@ -172,20 +179,35 @@ class Game:
             mano_team = self._player_team(self.hand.mano_player)
             if v1 > v2:
                 winner_team = self._player_team(p1)
+                loser_team = self._player_team(p2)
             elif v2 > v1:
                 winner_team = self._player_team(p2)
+                loser_team = self._player_team(p1)
             else:
-                winner_team = mano_team  # tie goes to mano
-            pts = self.hand.envido.value_accepted
+                winner_team = mano_team
+                loser_team = self._other_team(mano_team)
+            # Falta Envido: winner gets the loser's falta (what the LOSER still needs to win)
+            if self.hand.envido.bet_type == BetType.FALTA_ENVIDO:
+                pts = self.points_to_win - loser_team.points
+            else:
+                pts = self.hand.envido.value_accepted
             winner_team.add_points(pts)
-            return BetResult(bet_pending=False, hand_over=False, winner_team=winner_team, points_winner=pts)
+            game_over = self.check_game_over()
+            return BetResult(
+                bet_pending=False, hand_over=game_over, game_over=game_over,
+                winner_team=winner_team, points_winner=pts,
+            )
         if response == BetResponse.REFUSE:
             self.hand.envido.refuse()
             asker = self.hand.envido.who_asked
             asking_team = self._player_team(asker)
             pts = self.hand.envido.value_if_refused
             asking_team.add_points(pts)
-            return BetResult(bet_pending=False, hand_over=False, winner_team=asking_team, points_winner=pts)
+            game_over = self.check_game_over()
+            return BetResult(
+                bet_pending=False, hand_over=game_over, game_over=game_over,
+                winner_team=asking_team, points_winner=pts,
+            )
         raise RuntimeError("Use ask_envido to raise the envido bet")
 
     def can_flor(self, player) -> bool:
@@ -209,7 +231,11 @@ class Game:
             self.hand.flor.close()
             declaring_team.add_points(4)
             responding_team.add_points(2)
-            return BetResult(bet_pending=False, winner_team=declaring_team, points_winner=4, points_loser=2)
+            game_over = self.check_game_over()
+            return BetResult(
+                bet_pending=False, hand_over=game_over, game_over=game_over,
+                winner_team=declaring_team, points_winner=4, points_loser=2,
+            )
         if response == FlorResponse.CONTRA_FLOR:
             team = self._player_team(player)
             self.hand.flor.contra_flor(team)
@@ -225,7 +251,11 @@ class Game:
             self.hand.flor.close()
             contra_team.add_points(4)
             declaring_team.add_points(2)
-            return BetResult(bet_pending=False, winner_team=contra_team, points_winner=4, points_loser=2)
+            game_over = self.check_game_over()
+            return BetResult(
+                bet_pending=False, hand_over=game_over, game_over=game_over,
+                winner_team=contra_team, points_winner=4, points_loser=2,
+            )
         if response == FlorResponse.ACEITAR:
             # compare flores; winner gets 6
             return self._resolve_flor_confronto(6)
@@ -246,7 +276,11 @@ class Game:
             winner_team = mano_team
         self.hand.flor.close()
         winner_team.add_points(points)
-        return BetResult(bet_pending=False, winner_team=winner_team, points_winner=points)
+        game_over = self.check_game_over()
+        return BetResult(
+            bet_pending=False, hand_over=game_over, game_over=game_over,
+            winner_team=winner_team, points_winner=points,
+        )
 
     def _resolve_flor_al_resto(self) -> BetResult:
         p1, p2 = self._all_players
@@ -262,13 +296,26 @@ class Game:
         else:
             winner_team = mano_team
             loser_team = self._other_team(mano_team)
+        # Flor al Resto: winner gets the loser's falta (what the loser still needs to win)
         pts = self.points_to_win - loser_team.points
         self.hand.flor.close()
         winner_team.add_points(pts)
-        return BetResult(bet_pending=False, winner_team=winner_team, points_winner=pts)
+        game_over = self.check_game_over()
+        return BetResult(
+            bet_pending=False, hand_over=game_over, game_over=game_over,
+            winner_team=winner_team, points_winner=pts,
+        )
 
     def get_score(self) -> dict:
         return {self.team1: self.team1.points, self.team2: self.team2.points}
 
     def check_game_over(self) -> bool:
         return self.team1.points >= self.points_to_win or self.team2.points >= self.points_to_win
+
+    def get_winner(self):
+        """Returns winning team. If both crossed points_to_win in the same hand, higher score wins."""
+        if not self.check_game_over():
+            return None
+        if self.team1.points >= self.points_to_win and self.team2.points >= self.points_to_win:
+            return self.team1 if self.team1.points >= self.team2.points else self.team2
+        return self.team1 if self.team1.points >= self.points_to_win else self.team2

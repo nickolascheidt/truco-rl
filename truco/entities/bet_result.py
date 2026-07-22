@@ -12,6 +12,7 @@ class BetResult:
     bet_pending: bool = False
     hand_value: int = 1
     hand_over: bool = False
+    game_over: bool = False
     winner_team: "Team | None" = None
     who_responds: "Player | None" = None
     points_winner: int = 0

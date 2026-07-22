@@ -53,3 +53,31 @@ def test_declare_flor_sets_waiting():
     result = game.declare_flor(alice)
     assert result.bet_pending is True
     assert result.who_responds == bob
+
+
+def test_flor_not_available_after_round1_resolved():
+    game, alice, bob, t1, t2 = _make_game_with_flor()
+    # Play first round without declaring flor
+    game.play_card(alice, alice.hand[0])
+    game.play_card(bob, bob.hand[0])
+    # Round 1 is now resolved — flor window is closed
+    assert game.can_flor(alice) is False
+
+
+def test_flor_not_available_after_closed():
+    game, alice, bob, t1, t2 = _make_game_with_flor()
+    game.declare_flor(alice)
+    game.respond_flor(bob, __import__('truco.enums', fromlist=['FlorResponse']).FlorResponse.ME_ACHICO)
+    # Flor dispute is over — cannot declare again
+    assert game.can_flor(alice) is False
+
+
+def test_flor_not_available_in_round2():
+    game, alice, bob, t1, t2 = _make_game_with_flor()
+    # Declare and close flor in round 1, then play into round 2
+    from truco.enums import FlorResponse
+    game.declare_flor(alice)
+    game.respond_flor(bob, FlorResponse.ME_ACHICO)
+    game.play_card(alice, alice.hand[0])
+    game.play_card(bob, bob.hand[0])
+    assert game.can_flor(alice) is False

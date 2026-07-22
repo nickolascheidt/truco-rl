@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+
+# ML models — large binaries; distribute via Releases or HuggingFace
+models/
+
+# Superpowers plugin internals (não é parte do projeto)
+docs/superpowers/
+
+# Windows artifact
+C:UsersNickolastruco-rltrucorl/
+
+# Misc
+.env
+runs/
+*.log

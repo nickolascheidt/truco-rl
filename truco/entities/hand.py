@@ -22,6 +22,8 @@ class Hand:
         self.truco = TrucoState()
         self.envido = EnvidoState()
         self.flor = FlorState()
+        # Snapshot hands at deal time so envido is calculated on 3 cards even after one is played
+        self._initial_hands: dict["Player", list["Card"]] = {p: list(p.hand) for p in players}
 
     @property
     def round_number(self) -> int:
@@ -69,34 +71,53 @@ class Hand:
         if len(round_teams) >= 2:
             r1, r2 = round_teams[0], round_teams[1]
             if r1 is not None and r1 == r2:
-                return r1  # won 2 in a row
+                return r1                    # won 2 in a row
             if r1 is None and r2 is not None:
-                return r2  # tie then win
+                return r2                    # tie r1 → win r2
             if r1 is not None and r2 is None:
-                return r1  # win then tie
+                return r1                    # win r1 → tie r2
             if r1 is None and r2 is None:
-                return mano_team  # double tie
-            # r1 != r2 (split): need round 3
+                # tie r1 + tie r2 → r3 decides; all-3-tie → mano
+                if len(round_teams) >= 3:
+                    r3 = round_teams[2]
+                    return r3 if r3 is not None else mano_team
+                return None                  # undecided, need r3
+            # split (r1 != r2): r3 decides; r3 tie → r1 winner wins
             if len(round_teams) >= 3:
-                return round_teams[2] if round_teams[2] is not None else mano_team
+                r3 = round_teams[2]
+                return r3 if r3 is not None else r1
+            return None                      # undecided, need r3
         if len(round_teams) == 1 and round_teams[0] is not None:
             return round_teams[0]
-        return mano_team
+        return None
+
+    def _no_cards_played(self) -> bool:
+        return len(self.rounds) == 1 and len(self.rounds[0].plays) == 0
 
     def can_envido(self, player: "Player") -> bool:
-        if Hand.has_flor(player.hand):
+        initial = self._initial_hands.get(player, player.hand)
+        if Hand.has_flor(initial):
             return False
         if self.flor.envido_cancelled:
             return False
         if self.envido.status in (BetStatus.REFUSED, BetStatus.ACCEPTED):
             return False
-        return len(self.rounds) == 1 and not self.rounds[0].resolved
+        # Envido is valid in round 1 as long as the requesting player hasn't played yet.
+        # The mano is allowed to play a card first; the second player can still call envido.
+        in_round_one = len(self.rounds) == 1 and not self.rounds[0].resolved
+        player_hasnt_played = player not in self.rounds[0].plays
+        return in_round_one and player_hasnt_played
 
     def can_flor(self, player: "Player") -> bool:
-        return Hand.has_flor(player.hand)
+        initial = self._initial_hands.get(player, player.hand)
+        if not Hand.has_flor(initial):
+            return False
+        if self.flor.over:
+            return False
+        return self._no_cards_played()
 
     def envido_value(self, player: "Player") -> int:
-        cards = player.hand
+        cards = self._initial_hands.get(player, player.hand)
         by_suit: dict = defaultdict(list)
         for c in cards:
             by_suit[c.suit].append(c.envido_value)
@@ -107,7 +128,8 @@ class Hand:
         return max(c.envido_value for c in cards)
 
     def flor_value(self, player: "Player") -> int:
-        return 20 + sum(c.envido_value for c in player.hand)
+        cards = self._initial_hands.get(player, player.hand)
+        return 20 + sum(c.envido_value for c in cards)
 
     @staticmethod
     def has_flor(cards: list["Card"]) -> bool:

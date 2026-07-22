@@ -49,13 +49,13 @@ def test_get_score_returns_both_teams():
     assert score[t2] == 0
 
 
-def test_check_game_over_at_30():
+def test_check_game_over_at_24():
     game, alice, bob, t1, t2 = _make_game()
-    t1.points = 30
+    t1.points = 24
     assert game.check_game_over() is True
 
 
-def test_game_not_over_below_30():
+def test_game_not_over_below_24():
     game, alice, bob, t1, t2 = _make_game()
     t1.points = 15
     assert game.check_game_over() is False

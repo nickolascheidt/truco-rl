@@ -17,16 +17,19 @@ class EnvidoState:
     def ask(self, player: "Player", bet_type: BetType, points_to_win: int = 0) -> None:
         prev_accepted = self.value_accepted
 
+        # Accepted value is NOT cumulative for REAL_ENVIDO/FALTA_ENVIDO:
+        # the winner always gets the declared total, not prev + increment.
+        # Refused value IS the previous pending value (what you lose by folding).
         if bet_type == BetType.FALTA_ENVIDO:
-            increment = points_to_win
-        elif bet_type == BetType.ENVIDO_ENVIDO:
-            increment = 2
+            new_accepted = points_to_win
         elif bet_type == BetType.REAL_ENVIDO:
-            increment = 3
-        else:  # ENVIDO (first or re-raise)
-            increment = 2
+            new_accepted = prev_accepted + 3
+        elif bet_type == BetType.ENVIDO_ENVIDO:
+            new_accepted = prev_accepted + 2
+        else:  # ENVIDO
+            new_accepted = prev_accepted + 2
 
-        self.value_accepted = prev_accepted + increment
+        self.value_accepted = new_accepted
         self.value_if_refused = prev_accepted if prev_accepted > 0 else 1
         self.bet_type = bet_type
         self.who_asked = player
