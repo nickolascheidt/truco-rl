@@ -1,9 +1,0 @@
-pyproject.toml
-truco/__init__.py
-truco.egg-info/PKG-INFO
-truco.egg-info/SOURCES.txt
-truco.egg-info/dependency_links.txt
-truco.egg-info/requires.txt
-truco.egg-info/top_level.txt
-truco/entities/__init__.py
-truco/states/__init__.py
