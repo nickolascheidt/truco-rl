@@ -1,9 +1,6 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
+*.py[cod]
 *.egg-info/
 .pytest_cache/
 .venv/
@@ -11,17 +8,14 @@ venv/
 dist/
 build/
 
-# ML models — large binaries; distribute via Releases or HuggingFace
+# Trained models are large binaries and are reproducible with train.py
 models/
 
-# Superpowers plugin internals (não é parte do projeto)
-docs/superpowers/
-
-# Windows artifact
-C:UsersNickolastruco-rltrucorl/
-
-# Misc
-.env
+# Training output
 runs/
 *.log
+
+# Local notes
 docs/
+
+.env

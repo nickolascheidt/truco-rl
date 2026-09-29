@@ -5,11 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "truco"
 version = "0.1.0"
+description = "Truco Gaúcho rule engine and a self-play reinforcement-learning agent"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
+rl = ["numpy", "gymnasium", "stable-baselines3", "sb3-contrib"]
 dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["truco*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
