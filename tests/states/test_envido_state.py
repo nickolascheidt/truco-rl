@@ -72,14 +72,32 @@ def test_raise_envido_to_real_envido():
     assert state.value_if_refused == 2
 
 
-def test_real_envido_stacked_on_real_envido():
+def test_real_envido_cannot_be_raised_with_real_envido():
     state = EnvidoState()
     alice, bob = _make_players()
     state.ask(alice, BetType.ENVIDO)
     state.ask(bob, BetType.REAL_ENVIDO)
-    state.ask(alice, BetType.REAL_ENVIDO)
-    assert state.value_accepted == 8  # 2 + 3 + 3
-    assert state.value_if_refused == 5
+    assert state.can_raise(BetType.REAL_ENVIDO) is False
+    with pytest.raises(RuntimeError):
+        state.ask(alice, BetType.REAL_ENVIDO)
+
+
+@pytest.mark.parametrize("chain, allowed", [
+    ([], {BetType.ENVIDO, BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO}),
+    ([BetType.ENVIDO], {BetType.ENVIDO, BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO}),
+    ([BetType.ENVIDO, BetType.ENVIDO], {BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO}),
+    ([BetType.REAL_ENVIDO], {BetType.FALTA_ENVIDO}),
+    ([BetType.ENVIDO, BetType.REAL_ENVIDO], {BetType.FALTA_ENVIDO}),
+    ([BetType.FALTA_ENVIDO], set()),
+])
+def test_raise_chain_only_goes_up(chain, allowed):
+    """Envido at most twice, Real Envido once, Falta Envido ends the chain."""
+    state = EnvidoState()
+    players = _make_players()
+    for i, bet in enumerate(chain):
+        state.ask(players[i % 2], bet, points_to_win=10)
+    for bet in (BetType.ENVIDO, BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO):
+        assert state.can_raise(bet) is (bet in allowed), bet
 
 
 def test_falta_envido_value():

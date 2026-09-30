@@ -51,11 +51,11 @@ def compute_action_mask(game, player) -> np.ndarray:
     if envido_pending and envido.who_asked != player:
         mask[TrucoAction.ENVIDO_ACCEPT] = True
         mask[TrucoAction.ENVIDO_REFUSE] = True
-        # responder can also raise
+        # responder can also raise, as long as the chain still allows it
         if game.can_envido(player):
-            mask[TrucoAction.ENVIDO] = True
-            mask[TrucoAction.REAL_ENVIDO] = True
-            mask[TrucoAction.FALTA_ENVIDO] = True
+            mask[TrucoAction.ENVIDO] = envido.can_raise(BetType.ENVIDO)
+            mask[TrucoAction.REAL_ENVIDO] = envido.can_raise(BetType.REAL_ENVIDO)
+            mask[TrucoAction.FALTA_ENVIDO] = envido.can_raise(BetType.FALTA_ENVIDO)
         return mask
 
     # --- Flor response phase 1: opponent of declarer ---

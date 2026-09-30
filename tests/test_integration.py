@@ -126,12 +126,14 @@ def _handle_envido(game, asker, alice, bob):
     opponent = bob if asker == alice else alice
     # Opponent can accept, refuse, or raise
     choices = [BetResponse.ACCEPT, BetResponse.REFUSE]
-    # Raise only if there's a valid raise available and we haven't hit the ceiling
-    if game.can_envido(opponent):
+    # Raise only if the chain still allows a higher call
+    raises = [b for b in (BetType.ENVIDO, BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO)
+              if game.hand.envido.can_raise(b)]
+    if game.can_envido(opponent) and raises:
         choices.append(BetResponse.RAISE)
     response = random.choice(choices)
     if response == BetResponse.RAISE:
-        raise_type = random.choice([BetType.REAL_ENVIDO, BetType.FALTA_ENVIDO])
+        raise_type = random.choice(raises)
         if game.can_envido(opponent):
             game.ask_envido(opponent, raise_type)
             # Original asker must now accept or refuse

@@ -128,3 +128,21 @@ def test_envido_not_available_before_first_card_if_refused_in_same_round():
     assert not game.hand.rounds[0].resolved
     assert game.can_envido(alice) is False
     assert game.can_envido(bob) is False
+
+
+def test_envido_chain_always_terminates():
+    """Raising envido back and forth must run out of legal raises."""
+    from truco.rl.actions import TrucoAction, compute_action_mask, apply_action
+    game, alice, bob, t1, t2 = _make_game()
+    game.ask_envido(alice, BetType.ENVIDO)
+    responder = bob
+    for _ in range(10):
+        mask = compute_action_mask(game, responder)
+        raises = [a for a in (TrucoAction.ENVIDO, TrucoAction.REAL_ENVIDO, TrucoAction.FALTA_ENVIDO) if mask[a]]
+        if not raises:
+            break
+        apply_action(game, responder, raises[0])
+        responder = alice if responder is bob else bob
+    else:
+        pytest.fail("envido could be raised indefinitely")
+    assert game.hand.envido.status == BetStatus.PENDING
