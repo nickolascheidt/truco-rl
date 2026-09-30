@@ -25,28 +25,28 @@ def clear():
 SUIT_SYMBOLS = {"espadas": "E", "ouros": "O", "copas": "C", "paus": "P"}
 
 ACTION_LABELS = {
-    TrucoAction.PLAY_CARD_0:               "Jogar carta 0",
-    TrucoAction.PLAY_CARD_1:               "Jogar carta 1",
-    TrucoAction.PLAY_CARD_2:               "Jogar carta 2",
-    TrucoAction.TRUCO_ASK_OR_RAISE:        "TRUCO / Elevar truco",
-    TrucoAction.TRUCO_ACCEPT:              "Aceitar truco",
-    TrucoAction.TRUCO_REFUSE:              "Recusar truco (ir embora)",
+    TrucoAction.PLAY_CARD_0:               "Play card 0",
+    TrucoAction.PLAY_CARD_1:               "Play card 1",
+    TrucoAction.PLAY_CARD_2:               "Play card 2",
+    TrucoAction.TRUCO_ASK_OR_RAISE:        "TRUCO / raise truco",
+    TrucoAction.TRUCO_ACCEPT:              "Accept truco",
+    TrucoAction.TRUCO_REFUSE:              "Refuse truco (fold the hand)",
     TrucoAction.ENVIDO:                    "ENVIDO",
     TrucoAction.REAL_ENVIDO:               "REAL ENVIDO",
     TrucoAction.FALTA_ENVIDO:              "FALTA ENVIDO",
-    TrucoAction.ENVIDO_ACCEPT:             "Aceitar envido",
-    TrucoAction.ENVIDO_REFUSE:             "Recusar envido",
+    TrucoAction.ENVIDO_ACCEPT:             "Accept envido",
+    TrucoAction.ENVIDO_REFUSE:             "Refuse envido",
     TrucoAction.DECLARE_FLOR:              "FLOR",
     TrucoAction.FLOR_ME_ACHICO:            "Me achico (flor)",
     TrucoAction.FLOR_CONTRA_FLOR:          "CONTRA-FLOR",
-    TrucoAction.FLOR_ACEITAR:              "Aceitar confronto de flor",
+    TrucoAction.FLOR_ACEITAR:              "Accept the flor showdown",
     TrucoAction.FLOR_CONTRA_FLOR_AL_RESTO: "CONTRA-FLOR AL RESTO",
 }
 
 
 def fmt_card(card):
     suit = SUIT_SYMBOLS.get(card.suit.value, card.suit.value[0].upper())
-    return f"{card.number}{suit}(forca={card.strength})"
+    return f"{card.number}{suit}(str={card.strength})"
 
 
 def fmt_hand(cards):
@@ -72,7 +72,7 @@ def agent_move(model, game, agent):
     obs = encode_obs(game, agent)
     action_arr, _ = model.predict(obs[np.newaxis], action_masks=mask[np.newaxis], deterministic=True)
     action = int(action_arr[0])
-    name = ACTION_LABELS.get(TrucoAction(action), f"acao_{action}")
+    name = ACTION_LABELS.get(TrucoAction(action), f"action_{action}")
 
     extra = ""
     act = TrucoAction(action)
@@ -83,7 +83,7 @@ def agent_move(model, game, agent):
     elif act == TrucoAction.PLAY_CARD_2 and len(agent.hand) > 2:
         extra = f" -> {fmt_card(agent.hand[2])}"
 
-    print(f"\n  [AGENTE]  {name}{extra}")
+    print(f"\n  [AGENT]   {name}{extra}")
     return action
 
 
@@ -91,7 +91,7 @@ def human_move(game, human):
     mask = compute_action_mask(game, human)
     legal = [TrucoAction(i) for i, ok in enumerate(mask) if ok]
 
-    print("\n  Suas opcoes:")
+    print("\n  Your options:")
     for i, act in enumerate(legal):
         label = ACTION_LABELS.get(act, str(act))
         extra = ""
@@ -106,12 +106,12 @@ def human_move(game, human):
     print()
     while True:
         try:
-            choice = int(input("  Escolha: "))
+            choice = int(input("  Choice: "))
             if 0 <= choice < len(legal):
                 return int(legal[choice])
         except (ValueError, KeyboardInterrupt):
             pass
-        print("  Opcao invalida, tente novamente.")
+        print("  Invalid option, try again.")
 
 
 def print_header(game, human_team, agent_team, hand_num, human, agent):
@@ -119,11 +119,11 @@ def print_header(game, human_team, agent_team, hand_num, human, agent):
     mano = hand.mano_player.name
     pts_to_win = game.points_to_win
     print(f"{'='*55}")
-    print(f"  MAO {hand_num}   |   Mano: {mano}")
-    print(f"  Voce: {human_team.points}/{pts_to_win} pts   |   Agente: {agent_team.points}/{pts_to_win} pts")
+    print(f"  HAND {hand_num}   |   Mano: {mano}")
+    print(f"  You: {human_team.points}/{pts_to_win} pts   |   Agent: {agent_team.points}/{pts_to_win} pts")
     print(f"{'='*55}")
     print()
-    print(f"  Suas cartas:  {fmt_hand(human.hand)}")
+    print(f"  Your cards:   {fmt_hand(human.hand)}")
     env = game.hand.envido_value(human)
     print(f"  Envido:       {env} pts")
     print()
@@ -139,24 +139,24 @@ def print_envido_result(hand, human, agent, envido_result):
     winner_team = getattr(envido_result, "winner_team", None)
     winner_name = winner_team.players[0].name if winner_team else "?"
     print()
-    print(f"  ENVIDO resolvido:")
+    print(f"  ENVIDO settled:")
     print(f"    {human.name}: {human_pts} pts   |   {agent.name}: {agent_pts} pts")
-    print(f"    Vencedor: {winner_name}  (+{env.value_accepted} pts no placar)")
+    print(f"    Winner: {winner_name}  (+{env.value_accepted} pts)")
 
 
 def print_round_results(hand, human, agent):
     print()
-    print("  Rodadas:")
+    print("  Rounds:")
     for i, r in enumerate(hand.rounds):
         if r.resolved:
-            winner = r.winner.name if r.winner else "empate"
+            winner = r.winner.name if r.winner else "tie"
             plays = "  ".join(f"{p.name}: {fmt_card(c)}" for p, c in r.plays.items())
-            print(f"    Rodada {i+1}: {plays}  ->  {winner}")
+            print(f"    Round {i+1}: {plays}  ->  {winner}")
 
 
 def play_game(model, game_num):
-    human = Player("Voce")
-    agent = Player("Agente")
+    human = Player("You")
+    agent = Player("Agent")
     human_team = Team("T1", [human])
     agent_team = Team("T2", [agent])
     game = Game(human_team, agent_team)
@@ -178,7 +178,7 @@ def play_game(model, game_num):
 
             if current == human:
                 action = human_move(game, human)
-                print(f"\n  [VOCE]    {ACTION_LABELS.get(TrucoAction(action), str(action))}")
+                print(f"\n  [YOU]     {ACTION_LABELS.get(TrucoAction(action), str(action))}")
             else:
                 action = agent_move(model, game, agent)
 
@@ -196,23 +196,23 @@ def play_game(model, game_num):
         print_envido_result(game.hand, human, agent, envido_result)
         print_round_results(game.hand, human, agent)
         print()
-        print(f"  Placar final da mao: Voce={human_team.points}  Agente={agent_team.points}")
+        print(f"  Score after the hand: You={human_team.points}  Agent={agent_team.points}")
         print()
-        input("  [Enter para continuar...]")
+        input("  [Enter to continue...]")
 
     clear()
-    winner = "VOCE" if human_team.points >= game.points_to_win else "AGENTE"
+    winner = "YOU" if human_team.points >= game.points_to_win else "AGENT"
     print(f"\n{'='*55}")
-    print(f"  FIM DE JOGO  —  {hand_num} maos jogadas")
-    print(f"  VENCEDOR: {winner}")
-    print(f"  Placar: Voce={human_team.points}  Agente={agent_team.points}")
+    print(f"  GAME OVER  —  {hand_num} hands played")
+    print(f"  WINNER: {winner}")
+    print(f"  Score: You={human_team.points}  Agent={agent_team.points}")
     print(f"{'='*55}\n")
-    return winner == "VOCE"
+    return winner == "YOU"
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("model", type=str, help="Caminho para o modelo (sem .zip)")
+    parser.add_argument("model", type=str, help="Path to the model (without .zip)")
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
@@ -220,24 +220,24 @@ def main():
         np.random.seed(args.seed)
 
     clear()
-    print(f"Carregando modelo: {args.model} ...")
+    print(f"Loading model: {args.model} ...")
     model = MaskablePPO.load(args.model)
     print()
-    print("  Truco Gaucho 1v1 — Voce vs Agente treinado")
-    print("  Primeira a chegar em 24 pontos vence.")
+    print("  Truco Gaúcho 1v1 — you vs the trained agent")
+    print("  First to 24 points wins.")
     print()
-    input("  [Enter para comecar...]")
+    input("  [Enter to start...]")
 
     game_num = 1
     while True:
         play_game(model, game_num)
-        again = input("  Jogar de novo? [s/N] ").strip().lower()
-        if again not in ("s", "sim", "y", "yes"):
+        again = input("  Play again? [y/N] ").strip().lower()
+        if again not in ("y", "yes"):
             break
         game_num += 1
         clear()
 
-    print("\n  Ate mais!\n")
+    print("\n  See you!\n")
 
 
 if __name__ == "__main__":

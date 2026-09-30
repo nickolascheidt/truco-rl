@@ -3,7 +3,7 @@ from truco.enums import Suit
 
 
 def _calc_strength(number: int, suit: Suit) -> int:
-    # Manilhas fixas (espelha CalcularForca do C#, invertendo: C# 1=mais forte, Python 14=mais forte)
+    # Fixed trump cards (manilhas) first, then the plain ranks; 14 is the strongest card
     if number == 1 and suit == Suit.ESPADAS:
         return 14
     if number == 1 and suit == Suit.PAUS:  # Bastos
@@ -24,7 +24,7 @@ def _calc_strength(number: int, suit: Suit) -> int:
         return 6
     if number == 10:
         return 5
-    if number == 7:  # Copas ou Paus (não-manilha)
+    if number == 7:  # 7 of copas or paus (not a manilha)
         return 4
     if number == 6:
         return 3

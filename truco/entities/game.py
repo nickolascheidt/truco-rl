@@ -164,7 +164,7 @@ class Game:
             raise RuntimeError("Envido not available")
         if self.hand.truco.status == BetStatus.PENDING or self.hand.flor.waiting_for_response:
             raise RuntimeError("Cannot ask envido while another bet is pending")
-        # Falta = what the OTHER team needs to win ("falta para o outro time vencer")
+        # Falta = the points the OTHER team still needs to win
         opponent_team = self._other_team(self._player_team(player))
         pts_needed = self.points_to_win - opponent_team.points
         self.hand.envido.ask(player, bet_type, points_to_win=pts_needed)
